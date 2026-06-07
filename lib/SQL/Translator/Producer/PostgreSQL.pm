@@ -882,6 +882,11 @@ sub convert_datatype {
     $data_type .= '[]';
   }
 
+  # Text
+  if ($data_type eq 'text') {
+    $data_type = 'citext' if $field->is_case_insensitive;
+  }
+
   #
   # Geography
   #
