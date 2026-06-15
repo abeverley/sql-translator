@@ -4,6 +4,7 @@ use strict;
 
 use Test::More;
 use Test::Differences;
+use Test::Warn;
 use YAML qw(Load);
 
 use_ok("SQL::Translator");
@@ -26,8 +27,17 @@ CREATE TABLE "my_text_table" (
 COMMIT;
 ';
 
-my $postgresql = SQL::Translator->new(data => $sqlite_original, no_comments => 1, quote_identifiers => 1)
-    ->translate(from => 'SQLite', to => 'PostgreSQL');
+# For this test, the standard text field is converted (into citext). However,
+# the other 2 text-like fields (CHAR and VARCHAR) do not have a direct
+# equivalent. These 2 therefore remain the same, although because the SQLite
+# parser will have flagged them as case-insensitive, the PostgreSQL generator
+# will warn as such.
+my $expected_warning = { carped => 'Only text fields can be used with is_case_insensitive option' };
+my $postgresql;
+warnings_are sub {
+    $postgresql = SQL::Translator->new(data => $sqlite_original, no_comments => 1, quote_identifiers => 1)
+        ->translate(from => 'SQLite', to => 'PostgreSQL')
+}, [$expected_warning, $expected_warning], "Expected warning for incompatible fields";
 
 # PostgreSQL has the plugin citext
 eq_or_diff($postgresql, <<'DDL', 'Conversion from SQLite to PostgreSQL');
